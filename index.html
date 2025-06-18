@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Fotografía de mi equipo</title>
+
+  <!-- Konva -->
+  <script src="https://cdn.jsdelivr.net/npm/konva@9.3.0/konva.min.js"></script>
+
+  <style>
+    :root {
+      --brand: #006400;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f7f7f7;
+      margin: 0;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 24px;
+      text-align: center;
+      color: var(--brand);
+    }
+
+    /********* CONTENEDORES *********/
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    #workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    .stage-wrapper {
+      background: #fff;
+      padding: 16px;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      width: 100%;
+    }
+
+    .stage-wrapper h3 {
+      margin: 0 0 8px 0;
+      text-align: center;
+    }
+
+    .stage-container {
+      width: 100%;
+      height: 480px;
+      border: 1px dashed #ccc;
+      position: relative;
+    }
+
+    /********* PALETAS *********/
+    .palette,
+    .emoji-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .palette button {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+    }
+
+    .emoji-palette {
+      max-width: 960px;
+    }
+
+    .emoji-palette button {
+      font-size: 24px;
+      width: 44px;
+      height: 44px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .palette button:hover,
+    .emoji-palette button:hover,
+    button.save-btn:hover,
+    #configBtn:hover {
+      transform: scale(1.1);
+    }
+
+    .selected {
+      box-shadow: 0 0 0 3px #ff9800;
+    }
+
+    select {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .save-btn,
+    #configBtn {
+      padding: 6px 16px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--brand);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .note {
+      text-align: center;
+      font-size: 14px;
+      margin: 8px 0 24px;
+      color: #555;
+    }
+
+    /********* PANEL CONFIG *********/
+    #configPanel {
+      display: none;
+      max-width: 600px;
+      margin: 0 auto 32px;
+      background: #fff;
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    #configPanel textarea {
+      width: 100%;
+      height: 160px;
+      resize: vertical;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .config-actions {
+      margin-top: 12px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .cancel-btn {
+      background: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fotografía de mi equipo</h1>
+
+  <!-- Botón Configuración -->
+  <div style="text-align:center; margin-bottom:12px;">
+    <button id="configBtn">Configurar nombres</button>
+  </div>
+
+  <!-- Panel de nombres -->
+  <div id="configPanel">
+    <h3>Configurar nombres del equipo</h3>
+    <p style="text-align:center; font-size:14px; margin-top:0;">Un nombre por línea o separados por coma.</p>
+    <textarea id="namesInput"></textarea>
+    <div class="config-actions">
+      <button id="saveNames" class="save-btn">Guardar</button>
+      <button id="cancelNames" class="save-btn cancel-btn">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Controles principales -->
+  <div id="controls">
+
+    <!-- Colores -->
+    <div id="palette" class="palette">
+      <button data-color="#FFD700" style="background:#FFD700"></button>
+      <button data-color="#1E90FF" style="background:#1E90FF"></button>
+      <button data-color="#DC143C" style="background:#DC143C"></button>
+      <button data-color="#228B22" style="background:#228B22"></button>
+      <button data-color="#EE82EE" style="background:#EE82EE"></button>
+      <button data-color="#000000" style="background:#000000"></button>
+      <button data-color="#FFFFFF" style="background:#FFFFFF; border:1px solid #ccc;"></button>
+    </div>
+
+    <!-- Emojis (32) -->
+    <div id="emojiPalette" class="emoji-palette">
+      <!-- Generaremos con JS para más claridad -->
+    </div>
+
+    <!-- Nombres -->
+    <select id="nameSelect">
+      <option value="">-- Selecciona nombre --</option>
+    </select>
+
+  </div>
+
+  <p class="note">Clic en el lienzo vacío para añadir figura. <strong>Clic derecho</strong> en una figura para eliminarla.</p>
+
+  <div id="workspace">
+    <div class="stage-wrapper">
+      <h3>Foto actual</h3>
+      <div id="stageActualContainer" class="stage-container"></div>
+      <button id="saveActual" class="save-btn">Descargar PNG</button>
+    </div>
+
+    <div class="stage-wrapper">
+      <h3>Foto deseada</h3>
+      <div id="stageDeseadaContainer" class="stage-container"></div>
+      <button id="saveDeseada" class="save-btn">Descargar PNG</button>
+    </div>
+  </div>
+
+<script>
+/******************** VARIABLES SELECCIÓN ********************/
+let selectedColor = null;
+let selectedEmoji = null;
+let selectedName  = null;
+
+/******************** CONSTRUIR EMOJI PALETTE ********************/
+const emojiPalette = document.getElementById('emojiPalette');
+const emojis = [
+  '😀','😃','😄','😁','😆','😅','😂','🤣',
+  '😊','😇','🙂','🙃','😉','😌','😍','🥰',
+  '😘','🤩','🤔','🤨','😐','😑','😶','😏',
+  '😒','😞','😔','😟','😕','🙁','☹️','🤯'
+];
+
+emojis.forEach(e => {
+  const btn = document.createElement('button');
+  btn.textContent = e;
+  btn.dataset.emoji = e;
+  emojiPalette.appendChild(btn);
+});
+
+/******************** EVENTOS PALETAS ********************/
+const palette = document.getElementById('palette');
+
+palette.addEventListener('click', evt => {
+  const color = evt.target.dataset.color;
+  if (!color) return;
+  selectedColor = color;
+  palette.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b===evt.target));
+});
+
+emojiPalette.addEventListener('click', evt => {
+  const emo = evt.target.dataset.emoji;
+  if (!emo) return;
+  selectedEmoji = emo;
+  emojiPalette.querySelectorAll('button').forEach(b => b.classList.toggle('selected', b===evt.target));
+});
+
+const nameSelect = document.getElementById('nameSelect');
+nameSelect.addEventListener('change', () => {
+  selectedName = nameSelect.value;
+});
+
+/******************** NOMBRES CONFIG ********************/
+let namesList = ['TEST'];
+const buildNameSelect = () => {
+  nameSelect.innerHTML = '<option value="">-- Selecciona nombre --</option>';
+  namesList.forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = n;
+    nameSelect.appendChild(opt);
+  });
+  selectedName = '';
+  nameSelect.value = '';
+};
+
+buildNameSelect();
+
+// Panel
+const configPanel  = document.getElementById('configPanel');
+const configBtn    = document.getElementById('configBtn');
+const namesInput   = document.getElementById('namesInput');
+const saveNames    = document.getElementById('saveNames');
+const cancelNames  = document.getElementById('cancelNames');
+
+configBtn.addEventListener('click', () => {
+  namesInput.value = namesList.join('\n');
+  configPanel.style.display = 'block';
+});
+
+saveNames.addEventListener('click', () => {
+  namesList = namesInput.value.split(/[\n,]/).map(s=>s.trim()).filter(Boolean);
+  if(namesList.length===0) namesList=['TEST'];
+  buildNameSelect();
+  configPanel.style.display = 'none';
+});
+
+cancelNames.addEventListener('click', () => {
+  configPanel.style.display = 'none';
+});
+
+/******************** STAGES ********************/
+const stages = {};
+
+function createStage(containerId) {
+  const container = document.getElementById(containerId);
+
+  const stage = new Konva.Stage({
+    container: containerId,
+    width: container.offsetWidth,
+    height: container.offsetHeight
+  });
+
+  const layer = new Konva.Layer();
+  stage.add(layer);
+
+  // Prevent default browser menu
+  stage.container().addEventListener('contextmenu', e => e.preventDefault());
+
+  // Crear figura
+  stage.on('click', evt => {
+    if(evt.target !== stage) return; // solo fondo
+    if(!selectedColor || !selectedEmoji || !selectedName) return;
+
+    const pos = stage.getPointerPosition();
+
+    const group = new Konva.Group({ x: pos.x, y: pos.y, draggable: true });
+
+    const circle = new Konva.Circle({ radius: 28, fill: selectedColor });
+
+    const emoji = new Konva.Text({
+      text: selectedEmoji,
+      fontSize: 28,
+      width: 56,
+      height: 56,
+      align: 'center',
+      verticalAlign: 'middle',
+      offsetX: 28,
+      offsetY: 28,
+    });
+
+    const nameText = new Konva.Text({
+      text: selectedName,
+      fontSize: 14,
+      y: 32,
+      width: 100,
+      align: 'center',
+      offsetX: 50
+    });
+
+    group.add(circle, emoji, nameText);
+    layer.add(group);
+    layer.draw();
+  });
+
+  // Eliminar con botón derecho
+  stage.on('contextmenu', evt => {
+    const target = evt.target;
+    if(target && target.getParent() && target.getParent().className === 'Group') {
+      evt.evt.preventDefault();
+      target.getParent().destroy();
+      layer.draw();
+    }
+  });
+
+  // Responsive
+  window.addEventListener('resize', () => {
+    stage.width(container.offsetWidth);
+    stage.height(container.offsetHeight);
+    stage.draw();
+  });
+
+  return stage;
+}
+
+stages.actual  = createStage('stageActualContainer');
+stages.deseada = createStage('stageDeseadaContainer');
+
+/******************** DESCARGA ********************/
+function downloadStage(stage, filename) {
+  const uri = stage.toDataURL({ pixelRatio: 2 });
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = uri;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+document.getElementById('saveActual').addEventListener('click', () => downloadStage(stages.actual,  'foto-actual.png'));
+document.getElementById('saveDeseada').addEventListener('click', () => downloadStage(stages.deseada, 'foto-deseada.png'));
+
+</script>
+</body>
+</html>
